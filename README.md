@@ -1,29 +1,46 @@
-# Sentinel Agent Python SDK
+<div align="center">
 
-A Python SDK for building agents that integrate with the [Sentinel](https://github.com/raskell-io/sentinel) reverse proxy.
+<h1 align="center">
+  Sentinel Agent Python SDK
+</h1>
 
-## Installation
+<p align="center">
+  <em>Build agents that extend Sentinel's security and policy capabilities.</em><br>
+  <em>Inspect, block, redirect, and transform HTTP traffic.</em>
+</p>
+
+<p align="center">
+  <a href="https://www.python.org/">
+    <img alt="Python" src="https://img.shields.io/badge/Python-3.10+-3776ab?logo=python&logoColor=white&style=for-the-badge">
+  </a>
+  <a href="https://github.com/raskell-io/sentinel">
+    <img alt="Sentinel" src="https://img.shields.io/badge/Built%20for-Sentinel-f5a97f?style=for-the-badge">
+  </a>
+  <a href="LICENSE">
+    <img alt="License" src="https://img.shields.io/badge/License-Apache--2.0-c6a0f6?style=for-the-badge">
+  </a>
+</p>
+
+<p align="center">
+  <a href="docs/index.md">Documentation</a> •
+  <a href="docs/quickstart.md">Quickstart</a> •
+  <a href="docs/api.md">API Reference</a> •
+  <a href="docs/examples.md">Examples</a>
+</p>
+
+</div>
+
+---
+
+The Sentinel Agent Python SDK provides a simple, async-first API for building agents that integrate with the [Sentinel](https://github.com/raskell-io/sentinel) reverse proxy. Agents can inspect requests and responses, block malicious traffic, add headers, and attach audit metadata—all from Python.
+
+## Quick Start
 
 ```bash
 pip install sentinel-agent-sdk
 ```
 
-Or install from source:
-
-```bash
-cd sentinel-agent-python-sdk
-
-# Using mise + uv (recommended)
-mise install
-uv sync
-
-# Or using pip
-pip install -e .
-```
-
-## Quick Start
-
-Create a simple agent that blocks requests to admin paths:
+Create `my_agent.py`:
 
 ```python
 from sentinel_agent_sdk import Agent, Decision, Request, run_agent
@@ -52,178 +69,185 @@ python my_agent.py --socket /tmp/my-agent.sock
 
 ## Features
 
-- **Simple API**: Implement the `Agent` class with intuitive handler methods
-- **Fluent Decision Builder**: Chain methods to build complex responses
-- **Request/Response Wrappers**: Ergonomic access to headers, body, and metadata
-- **Typed Configuration**: Use `ConfigurableAgent` for type-safe configuration
-- **Async Support**: Built on asyncio for high-performance concurrent processing
-- **Protocol Compatible**: Full compatibility with Sentinel's agent protocol
+| Feature | Description |
+|---------|-------------|
+| **Simple Agent API** | Implement `on_request`, `on_response`, and other hooks |
+| **Fluent Decision Builder** | Chain methods: `Decision.deny().with_body(...).with_tag(...)` |
+| **Request/Response Wrappers** | Ergonomic access to headers, body, query params, metadata |
+| **Typed Configuration** | Generic `ConfigurableAgent[T]` with dataclass/Pydantic support |
+| **Async Native** | Built on asyncio for high-performance concurrent processing |
+| **Protocol Compatible** | Full compatibility with Sentinel agent protocol v1 |
+
+## Why Agents?
+
+Sentinel's agent system moves complex logic **out of the proxy core** and into isolated, testable, independently deployable processes:
+
+- **Security isolation** — WAF engines, auth validation, and custom logic run in separate processes
+- **Language flexibility** — Write agents in Python, Rust, Go, or any language
+- **Independent deployment** — Update agent logic without restarting the proxy
+- **Failure boundaries** — Agent crashes don't take down the dataplane
+
+Agents communicate with Sentinel over Unix sockets using a simple length-prefixed JSON protocol.
+
+## Architecture
+
+```
+┌─────────────┐         ┌──────────────┐         ┌──────────────┐
+│   Client    │────────▶│   Sentinel   │────────▶│   Upstream   │
+└─────────────┘         └──────────────┘         └──────────────┘
+                               │
+                               │ Unix Socket (JSON)
+                               ▼
+                        ┌──────────────┐
+                        │    Agent     │
+                        │   (Python)   │
+                        └──────────────┘
+```
+
+1. Client sends request to Sentinel
+2. Sentinel forwards request headers to agent
+3. Agent returns decision (allow, block, redirect) with optional header mutations
+4. Sentinel applies the decision
+5. Agent can also inspect response headers before they reach the client
+
+---
 
 ## Core Concepts
 
 ### Agent
 
-The `Agent` class is the main abstraction for building agents. Implement the handlers you need:
+The `Agent` base class defines the hooks you can implement:
 
 ```python
+from sentinel_agent_sdk import Agent, Decision, Request, Response
+
+
 class MyAgent(Agent):
     @property
     def name(self) -> str:
-        """Required: Return agent name for logging."""
+        """Required: Agent identifier for logging."""
         return "my-agent"
 
-    async def on_configure(self, config: dict) -> None:
-        """Optional: Handle configuration from proxy."""
-        pass
-
     async def on_request(self, request: Request) -> Decision:
-        """Optional: Process request headers."""
+        """Called when request headers arrive."""
         return Decision.allow()
 
     async def on_request_body(self, request: Request) -> Decision:
-        """Optional: Process request body (when enabled)."""
+        """Called when request body is available (if body inspection enabled)."""
         return Decision.allow()
 
     async def on_response(self, request: Request, response: Response) -> Decision:
-        """Optional: Process response headers."""
+        """Called when response headers arrive from upstream."""
         return Decision.allow()
 
     async def on_response_body(self, request: Request, response: Response) -> Decision:
-        """Optional: Process response body (when enabled)."""
+        """Called when response body is available (if body inspection enabled)."""
         return Decision.allow()
 
     async def on_request_complete(self, request: Request, status: int, duration_ms: int) -> None:
-        """Optional: Called when request processing completes."""
+        """Called when request processing completes. Use for logging/metrics."""
         pass
 ```
 
 ### Request
 
-The `Request` class provides ergonomic access to HTTP request data:
+Access HTTP request data with convenience methods:
 
 ```python
 async def on_request(self, request: Request) -> Decision:
-    # Method checks
-    if request.is_get():
-        pass
-    if request.is_post():
-        pass
-
-    # Path access
-    path = request.path           # Full path with query string
-    path_only = request.path_only # Path without query string
-
     # Path matching
-    if request.path_starts_with("/api"):
+    if request.path_starts_with("/api/"):
         pass
     if request.path_equals("/health"):
-        pass
-
-    # Query parameters
-    page = request.query("page")           # Single value
-    tags = request.query_all("tag")        # All values
+        return Decision.allow()
 
     # Headers (case-insensitive)
-    auth = request.header("Authorization")
-    has_auth = request.has_header("Authorization")
+    auth = request.get_header("authorization")
+    if not request.has_header("x-api-key"):
+        return Decision.unauthorized()
 
-    # Common headers
+    # Common headers as properties
     host = request.host
     user_agent = request.user_agent
     content_type = request.content_type
 
-    # Body access
-    body_bytes = request.body
-    body_str = request.body_str
-    body_json = request.body_json()
+    # Query parameters
+    page = request.query_params.get("page", ["1"])[0]
 
-    # Metadata
+    # Request metadata
     client_ip = request.client_ip
     correlation_id = request.correlation_id
+
+    # Body (when body inspection is enabled)
+    if request.body:
+        data = request.body.decode("utf-8")
 
     return Decision.allow()
 ```
 
 ### Response
 
-The `Response` class provides similar access for HTTP responses:
+Inspect upstream responses before they reach the client:
 
 ```python
 async def on_response(self, request: Request, response: Response) -> Decision:
-    # Status checks
-    status = response.status_code
-    if response.is_success():      # 2xx
-        pass
-    if response.is_redirect():     # 3xx
-        pass
-    if response.is_client_error(): # 4xx
-        pass
-    if response.is_server_error(): # 5xx
-        pass
-    if response.is_error():        # 4xx or 5xx
-        pass
+    # Status code
+    if response.status_code >= 500:
+        return Decision.allow().with_tag("upstream-error")
 
     # Headers
-    content_type = response.content_type
-    location = response.location  # For redirects
+    content_type = response.get_header("content-type")
 
-    # Content type checks
-    if response.is_json():
-        pass
-    if response.is_html():
-        pass
-
-    # Body
-    body_bytes = response.body
-    body_str = response.body_str
-    body_json = response.body_json()
-
-    return Decision.allow()
+    # Add security headers to all responses
+    return (
+        Decision.allow()
+        .add_response_header("X-Frame-Options", "DENY")
+        .add_response_header("X-Content-Type-Options", "nosniff")
+        .remove_response_header("Server")
+    )
 ```
 
 ### Decision
 
-The `Decision` class provides a fluent API for building agent responses:
+Build responses with a fluent API:
 
 ```python
-# Basic decisions
-Decision.allow()                    # Pass through
-Decision.deny()                     # Block with 403
-Decision.unauthorized()             # Block with 401
-Decision.rate_limited()             # Block with 429
-Decision.block(500)                 # Block with custom status
-Decision.redirect("/login")         # Redirect (302)
-Decision.redirect_permanent("/new") # Redirect (301)
+# Allow the request
+Decision.allow()
 
-# Customizing block responses
-Decision.deny() \
-    .with_body("Access denied") \
-    .with_block_header("X-Blocked-Reason", "policy")
+# Block with common status codes
+Decision.deny()           # 403 Forbidden
+Decision.unauthorized()   # 401 Unauthorized
+Decision.rate_limited()   # 429 Too Many Requests
+Decision.block(503)       # Custom status
 
-# JSON responses
-Decision.block(400) \
-    .with_json_body({"error": "Invalid request"})
+# Block with response body
+Decision.deny().with_body("Access denied")
+Decision.block(400).with_json_body({"error": "Invalid request"})
 
-# Header mutations
+# Redirect
+Decision.redirect("/login")                    # 302 temporary
+Decision.redirect("/new-path", status=301)     # 301 permanent
+Decision.redirect_permanent("/new-path")       # 301 permanent
+
+# Modify headers
 Decision.allow() \
-    .add_request_header("X-Processed", "true") \
-    .remove_request_header("X-Internal") \
+    .add_request_header("X-User-ID", user_id) \
+    .remove_request_header("Cookie") \
     .add_response_header("X-Cache", "HIT") \
-    .remove_response_header("Server")
+    .remove_response_header("X-Powered-By")
 
-# Audit metadata
+# Audit metadata (appears in Sentinel logs)
 Decision.deny() \
-    .with_tag("security") \
-    .with_tags(["blocked", "suspicious"]) \
-    .with_rule_id("RULE_001") \
+    .with_tag("blocked") \
+    .with_rule_id("SQLI-001") \
     .with_confidence(0.95) \
-    .with_reason_code("RATE_EXCEEDED") \
-    .with_metadata("client_ip", "1.2.3.4")
+    .with_metadata("matched_pattern", pattern)
 ```
 
-### Configurable Agent
+### ConfigurableAgent
 
-For agents that need typed configuration:
+For agents with typed configuration:
 
 ```python
 from dataclasses import dataclass
@@ -231,52 +255,53 @@ from sentinel_agent_sdk import ConfigurableAgent, Decision, Request
 
 
 @dataclass
-class MyConfig:
-    rate_limit: int = 100
+class RateLimitConfig:
+    requests_per_minute: int = 60
     enabled: bool = True
-    blocked_paths: list[str] = None
-
-    def __post_init__(self):
-        if self.blocked_paths is None:
-            self.blocked_paths = []
 
 
-class MyAgent(ConfigurableAgent[MyConfig]):
+class RateLimitAgent(ConfigurableAgent[RateLimitConfig]):
     def __init__(self):
-        super().__init__(MyConfig())
+        super().__init__(RateLimitConfig())
 
     @property
     def name(self) -> str:
-        return "my-agent"
+        return "rate-limiter"
 
-    async def on_config_applied(self, config: MyConfig) -> None:
-        print(f"Config applied: rate_limit={config.rate_limit}")
+    async def on_config_applied(self, config: RateLimitConfig) -> None:
+        print(f"Rate limit set to {config.requests_per_minute}/min")
 
     async def on_request(self, request: Request) -> Decision:
         if not self.config.enabled:
             return Decision.allow()
-
-        for path in self.config.blocked_paths:
-            if request.path_starts_with(path):
-                return Decision.deny()
-
+        # Use self.config.requests_per_minute...
         return Decision.allow()
 ```
+
+---
 
 ## Running Agents
 
 ### Command Line
 
+The `run_agent` helper parses CLI arguments:
+
 ```bash
 # Basic usage
 python my_agent.py --socket /tmp/my-agent.sock
 
-# With JSON logs
-python my_agent.py --socket /tmp/my-agent.sock --json-logs
-
-# With debug logging
-python my_agent.py --socket /tmp/my-agent.sock --log-level DEBUG
+# With options
+python my_agent.py \
+    --socket /tmp/my-agent.sock \
+    --log-level DEBUG \
+    --json-logs
 ```
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--socket PATH` | Unix socket path | `/tmp/sentinel-agent.sock` |
+| `--log-level LEVEL` | DEBUG, INFO, WARNING, ERROR | `INFO` |
+| `--json-logs` | Output logs as JSON | disabled |
 
 ### Programmatic
 
@@ -285,80 +310,98 @@ import asyncio
 from pathlib import Path
 from sentinel_agent_sdk import AgentRunner
 
+
 async def main():
     runner = (
         AgentRunner(MyAgent())
-        .with_name("my-agent")
         .with_socket(Path("/tmp/my-agent.sock"))
+        .with_log_level("DEBUG")
         .with_json_logs()
     )
     await runner.run()
 
-asyncio.run(main())
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
+
+---
 
 ## Sentinel Configuration
 
-Configure Sentinel to use your agent:
+Configure Sentinel to connect to your agent:
 
 ```kdl
 agents {
-    agent "my-agent" {
-        type "custom"
-        transport "unix_socket" {
-            path "/tmp/my-agent.sock"
-        }
-        events ["request_headers", "response_headers"]
-        timeout_ms 1000
-        failure_mode "open"
+    agent "my-agent" type="custom" {
+        unix-socket path="/tmp/my-agent.sock"
+        events "request_headers"
+        timeout-ms 100
+        failure-mode "open"
+    }
+}
 
-        config {
-            rate_limit 100
-            enabled true
-            blocked_paths ["/admin", "/internal"]
-        }
+filters {
+    filter "my-filter" {
+        type "agent"
+        agent "my-agent"
     }
 }
 
 routes {
     route "api" {
-        matches { path_prefix "/api" }
+        matches {
+            path-prefix "/api/"
+        }
         upstream "backend"
-        agents ["my-agent"]
+        filters "my-filter"
     }
 }
 ```
 
+### Configuration Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `unix-socket path="..."` | Path to agent's Unix socket | required |
+| `events` | Events to send: `request_headers`, `request_body`, `response_headers`, `response_body` | `request_headers` |
+| `timeout-ms` | Timeout for agent calls | `1000` |
+| `failure-mode` | `"open"` (allow on failure) or `"closed"` (block on failure) | `"open"` |
+
+See [docs/configuration.md](docs/configuration.md) for complete configuration reference.
+
+---
+
 ## Examples
 
-See the `examples/` directory for complete examples:
+The `examples/` directory contains complete, runnable examples:
 
-- `simple_agent.py` - Basic request filtering
-- `configurable_agent.py` - Rate limiting with configuration
-- `body_inspection_agent.py` - Request/response body inspection
+| Example | Description |
+|---------|-------------|
+| [`simple_agent.py`](examples/simple_agent.py) | Basic request blocking and header modification |
+| [`configurable_agent.py`](examples/configurable_agent.py) | Rate limiting with typed configuration |
+| [`body_inspection_agent.py`](examples/body_inspection_agent.py) | Request and response body inspection |
 
-## Protocol Compatibility
+See [docs/examples.md](docs/examples.md) for more patterns: authentication, rate limiting, IP filtering, header transformation, and more.
 
-This SDK implements Sentinel's agent protocol version 1:
-
-- Unix socket communication with length-prefixed JSON
-- Support for all event types (request headers, body, response headers, body, complete)
-- Full decision types (allow, block, redirect, challenge)
-- Header mutations and audit metadata
+---
 
 ## Development
 
-This project uses [mise](https://mise.jdx.dev/) for tool management and [uv](https://github.com/astral-sh/uv) for fast Python package management.
+This project uses [mise](https://mise.jdx.dev/) for tool management and [uv](https://docs.astral.sh/uv/) for Python package management.
 
 ```bash
-# Install tools via mise
+# Install tools
 mise install
 
-# Sync dependencies (creates .venv automatically)
+# Install dependencies
 uv sync --all-extras
 
 # Run tests
 uv run pytest
+
+# Run tests with coverage
+uv run pytest --cov=sentinel_agent_sdk
 
 # Type checking
 uv run mypy src
@@ -370,15 +413,61 @@ uv run ruff check src
 uv run ruff format src
 ```
 
-Alternatively, with standard pip:
+### Without mise/uv
 
 ```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -e ".[dev]"
 pytest
-mypy src
-ruff check src
 ```
+
+### Project Structure
+
+```
+sentinel-agent-python-sdk/
+├── src/sentinel_agent_sdk/
+│   ├── __init__.py      # Public API exports
+│   ├── agent.py         # Agent and ConfigurableAgent base classes
+│   ├── decision.py      # Decision builder
+│   ├── protocol.py      # Wire protocol types and encoding
+│   ├── request.py       # Request wrapper
+│   ├── response.py      # Response wrapper
+│   └── runner.py        # AgentRunner and CLI handling
+├── tests/
+│   ├── test_sdk.py                    # Unit tests
+│   ├── test_protocol_conformance.py   # Protocol compatibility tests
+│   └── integration/                   # Integration tests
+├── examples/                          # Example agents
+└── docs/                              # Documentation
+```
+
+---
+
+## Protocol
+
+This SDK implements Sentinel Agent Protocol v1:
+
+- **Transport**: Unix domain sockets
+- **Encoding**: Length-prefixed JSON (4-byte big-endian length prefix)
+- **Max message size**: 10 MB
+- **Events**: `configure`, `request_headers`, `request_body_chunk`, `response_headers`, `response_body_chunk`, `request_complete`
+- **Decisions**: `allow`, `block`, `redirect`, `challenge`
+
+The protocol is designed for low latency and high throughput, with support for streaming body inspection.
+
+---
+
+## Community
+
+- 🐛 [Issues](https://github.com/raskell-io/sentinel-agent-python-sdk/issues) — Bug reports and feature requests
+- 💬 [Sentinel Discussions](https://github.com/raskell-io/sentinel/discussions) — Questions and ideas
+- 📖 [Sentinel Documentation](https://sentinel.raskell.io/docs) — Proxy documentation
+
+Contributions welcome. Please open an issue to discuss significant changes before submitting a PR.
+
+---
 
 ## License
 
-Apache License 2.0 - see LICENSE file for details.
+Apache 2.0 — See [LICENSE](LICENSE).
