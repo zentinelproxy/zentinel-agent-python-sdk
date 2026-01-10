@@ -6,6 +6,10 @@ from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
 from sentinel_agent_sdk.decision import Decision
+from sentinel_agent_sdk.protocol import (
+    GuardrailInspectEvent,
+    GuardrailResponse,
+)
 from sentinel_agent_sdk.request import Request
 from sentinel_agent_sdk.response import Response
 
@@ -128,6 +132,24 @@ class Agent(ABC):
             duration_ms: The request duration in milliseconds.
         """
         pass
+
+    async def on_guardrail_inspect(
+        self,
+        event: GuardrailInspectEvent,
+    ) -> GuardrailResponse:
+        """Inspect content for guardrail violations.
+
+        Called when content needs to be analyzed for prompt injection
+        or PII detection. Override to implement custom guardrail logic.
+
+        Args:
+            event: The guardrail inspection event containing content
+                   and inspection parameters.
+
+        Returns:
+            A GuardrailResponse indicating detection results.
+        """
+        return GuardrailResponse.clean()
 
 
 class ConfigurableAgent(Agent, Generic[T]):

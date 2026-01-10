@@ -23,6 +23,23 @@ class EventType(str, Enum):
     REQUEST_COMPLETE = "request_complete"
     WEBSOCKET_FRAME = "websocket_frame"
     CONFIGURE = "configure"
+    GUARDRAIL_INSPECT = "guardrail_inspect"
+
+
+class GuardrailInspectionType(str, Enum):
+    """Type of guardrail inspection to perform."""
+
+    PROMPT_INJECTION = "prompt_injection"
+    PII_DETECTION = "pii_detection"
+
+
+class DetectionSeverity(str, Enum):
+    """Severity level for guardrail detections."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
 
 
 @dataclass
@@ -213,6 +230,166 @@ class ConfigureEvent:
             agent_id=data.get("agent_id", ""),
             config=data.get("config", {}),
         )
+
+
+@dataclass
+class TextSpan:
+    """Text span indicating location in content."""
+
+    start: int
+    end: int
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        return {"start": self.start, "end": self.end}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TextSpan:
+        """Create from dictionary."""
+        return cls(
+            start=data.get("start", 0),
+            end=data.get("end", 0),
+        )
+
+
+@dataclass
+class GuardrailDetection:
+    """A single guardrail detection (prompt injection attempt, PII instance, etc.)."""
+
+    category: str
+    description: str
+    severity: DetectionSeverity = DetectionSeverity.MEDIUM
+    confidence: float | None = None
+    span: TextSpan | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        result: dict[str, Any] = {
+            "category": self.category,
+            "description": self.description,
+            "severity": self.severity.value,
+        }
+        if self.confidence is not None:
+            result["confidence"] = self.confidence
+        if self.span is not None:
+            result["span"] = self.span.to_dict()
+        return result
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> GuardrailDetection:
+        """Create from dictionary."""
+        severity_str = data.get("severity", "medium")
+        try:
+            severity = DetectionSeverity(severity_str)
+        except ValueError:
+            severity = DetectionSeverity.MEDIUM
+
+        span = None
+        if "span" in data and data["span"]:
+            span = TextSpan.from_dict(data["span"])
+
+        return cls(
+            category=data.get("category", ""),
+            description=data.get("description", ""),
+            severity=severity,
+            confidence=data.get("confidence"),
+            span=span,
+        )
+
+    def with_severity(self, severity: DetectionSeverity) -> GuardrailDetection:
+        """Set severity level."""
+        self.severity = severity
+        return self
+
+    def with_confidence(self, confidence: float) -> GuardrailDetection:
+        """Set confidence score."""
+        self.confidence = confidence
+        return self
+
+    def with_span(self, start: int, end: int) -> GuardrailDetection:
+        """Set text span location."""
+        self.span = TextSpan(start=start, end=end)
+        return self
+
+
+@dataclass
+class GuardrailInspectEvent:
+    """Event for guardrail content inspection."""
+
+    correlation_id: str
+    inspection_type: GuardrailInspectionType
+    content: str
+    model: str | None = None
+    categories: list[str] = field(default_factory=list)
+    route_id: str | None = None
+    metadata: dict[str, str] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> GuardrailInspectEvent:
+        """Create from dictionary."""
+        inspection_type_str = data.get("inspection_type", "prompt_injection")
+        try:
+            inspection_type = GuardrailInspectionType(inspection_type_str)
+        except ValueError:
+            inspection_type = GuardrailInspectionType.PROMPT_INJECTION
+
+        return cls(
+            correlation_id=data.get("correlation_id", ""),
+            inspection_type=inspection_type,
+            content=data.get("content", ""),
+            model=data.get("model"),
+            categories=data.get("categories", []),
+            route_id=data.get("route_id"),
+            metadata=data.get("metadata", {}),
+        )
+
+
+@dataclass
+class GuardrailResponse:
+    """Response from guardrail inspection."""
+
+    detected: bool = False
+    confidence: float = 0.0
+    detections: list[GuardrailDetection] = field(default_factory=list)
+    redacted_content: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        result: dict[str, Any] = {
+            "detected": self.detected,
+            "confidence": self.confidence,
+            "detections": [d.to_dict() for d in self.detections],
+        }
+        if self.redacted_content is not None:
+            result["redacted_content"] = self.redacted_content
+        return result
+
+    @classmethod
+    def clean(cls) -> GuardrailResponse:
+        """Create a response indicating nothing detected."""
+        return cls()
+
+    @classmethod
+    def with_detection(cls, detection: GuardrailDetection) -> GuardrailResponse:
+        """Create a response with a single detection."""
+        return cls(
+            detected=True,
+            confidence=detection.confidence or 1.0,
+            detections=[detection],
+        )
+
+    def add_detection(self, detection: GuardrailDetection) -> GuardrailResponse:
+        """Add a detection to the response."""
+        self.detected = True
+        if detection.confidence is not None:
+            self.confidence = max(self.confidence, detection.confidence)
+        self.detections.append(detection)
+        return self
+
+    def with_redacted_content(self, content: str) -> GuardrailResponse:
+        """Set redacted content for PII detection."""
+        self.redacted_content = content
+        return self
 
 
 @dataclass

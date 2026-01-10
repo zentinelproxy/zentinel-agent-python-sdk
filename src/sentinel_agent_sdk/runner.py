@@ -17,6 +17,7 @@ from sentinel_agent_sdk.decision import Decision
 from sentinel_agent_sdk.protocol import (
     ConfigureEvent,
     EventType,
+    GuardrailInspectEvent,
     RequestBodyChunkEvent,
     RequestCompleteEvent,
     RequestHeadersEvent,
@@ -83,6 +84,8 @@ class AgentHandler:
                 return await self._handle_response_body_chunk(payload)
             elif event_type == EventType.REQUEST_COMPLETE.value:
                 return await self._handle_request_complete(payload)
+            elif event_type == EventType.GUARDRAIL_INSPECT.value:
+                return await self._handle_guardrail_inspect(payload)
             else:
                 logger.warning(f"Unknown event type: {event_type}")
                 return Decision.allow().build().to_dict()
@@ -196,6 +199,14 @@ class AgentHandler:
             )
 
         return {"success": True}
+
+    async def _handle_guardrail_inspect(
+        self, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Handle guardrail inspection event."""
+        event = GuardrailInspectEvent.from_dict(payload)
+        response = await self._agent.on_guardrail_inspect(event)
+        return response.to_dict()
 
 
 class AgentRunner:
