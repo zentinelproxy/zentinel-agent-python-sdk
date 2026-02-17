@@ -1,11 +1,11 @@
 <div align="center">
 
 <h1 align="center">
-  Sentinel Agent Python SDK
+  Zentinel Agent Python SDK
 </h1>
 
 <p align="center">
-  <em>Build agents that extend Sentinel's security and policy capabilities.</em><br>
+  <em>Build agents that extend Zentinel's security and policy capabilities.</em><br>
   <em>Inspect, block, redirect, and transform HTTP traffic.</em>
 </p>
 
@@ -13,8 +13,8 @@
   <a href="https://www.python.org/">
     <img alt="Python" src="https://img.shields.io/badge/Python-3.10+-3776ab?logo=python&logoColor=white&style=for-the-badge">
   </a>
-  <a href="https://github.com/raskell-io/sentinel">
-    <img alt="Sentinel" src="https://img.shields.io/badge/Built%20for-Sentinel-f5a97f?style=for-the-badge">
+  <a href="https://github.com/zentinelproxy/zentinel">
+    <img alt="Zentinel" src="https://img.shields.io/badge/Built%20for-Zentinel-f5a97f?style=for-the-badge">
   </a>
   <a href="LICENSE">
     <img alt="License" src="https://img.shields.io/badge/License-Apache--2.0-c6a0f6?style=for-the-badge">
@@ -32,18 +32,18 @@
 
 ---
 
-The Sentinel Agent Python SDK provides a simple, async-first API for building agents that integrate with the [Sentinel](https://github.com/raskell-io/sentinel) reverse proxy. Agents can inspect requests and responses, block malicious traffic, add headers, and attach audit metadata—all from Python.
+The Zentinel Agent Python SDK provides a simple, async-first API for building agents that integrate with the [Zentinel](https://github.com/zentinelproxy/zentinel) reverse proxy. Agents can inspect requests and responses, block malicious traffic, add headers, and attach audit metadata—all from Python.
 
 ## Quick Start
 
 ```bash
-pip install sentinel-agent-sdk
+pip install zentinel-agent-sdk
 ```
 
 Create `my_agent.py`:
 
 ```python
-from sentinel_agent_sdk import Agent, Decision, Request, run_agent
+from zentinel_agent_sdk import Agent, Decision, Request, run_agent
 
 
 class MyAgent(Agent):
@@ -76,24 +76,24 @@ python my_agent.py --socket /tmp/my-agent.sock
 | **Request/Response Wrappers** | Ergonomic access to headers, body, query params, metadata |
 | **Typed Configuration** | Generic `ConfigurableAgent[T]` with dataclass/Pydantic support |
 | **Async Native** | Built on asyncio for high-performance concurrent processing |
-| **Protocol Compatible** | Full compatibility with Sentinel agent protocol v1 |
+| **Protocol Compatible** | Full compatibility with Zentinel agent protocol v1 |
 
 ## Why Agents?
 
-Sentinel's agent system moves complex logic **out of the proxy core** and into isolated, testable, independently deployable processes:
+Zentinel's agent system moves complex logic **out of the proxy core** and into isolated, testable, independently deployable processes:
 
 - **Security isolation** — WAF engines, auth validation, and custom logic run in separate processes
 - **Language flexibility** — Write agents in Python, Rust, Go, or any language
 - **Independent deployment** — Update agent logic without restarting the proxy
 - **Failure boundaries** — Agent crashes don't take down the dataplane
 
-Agents communicate with Sentinel over Unix sockets using a simple length-prefixed JSON protocol.
+Agents communicate with Zentinel over Unix sockets using a simple length-prefixed JSON protocol.
 
 ## Architecture
 
 ```
 ┌─────────────┐         ┌──────────────┐         ┌──────────────┐
-│   Client    │────────▶│   Sentinel   │────────▶│   Upstream   │
+│   Client    │────────▶│   Zentinel   │────────▶│   Upstream   │
 └─────────────┘         └──────────────┘         └──────────────┘
                                │
                                │ Unix Socket (JSON)
@@ -104,10 +104,10 @@ Agents communicate with Sentinel over Unix sockets using a simple length-prefixe
                         └──────────────┘
 ```
 
-1. Client sends request to Sentinel
-2. Sentinel forwards request headers to agent
+1. Client sends request to Zentinel
+2. Zentinel forwards request headers to agent
 3. Agent returns decision (allow, block, redirect) with optional header mutations
-4. Sentinel applies the decision
+4. Zentinel applies the decision
 5. Agent can also inspect response headers before they reach the client
 
 ---
@@ -119,7 +119,7 @@ Agents communicate with Sentinel over Unix sockets using a simple length-prefixe
 The `Agent` base class defines the hooks you can implement:
 
 ```python
-from sentinel_agent_sdk import Agent, Decision, Request, Response
+from zentinel_agent_sdk import Agent, Decision, Request, Response
 
 
 class MyAgent(Agent):
@@ -237,7 +237,7 @@ Decision.allow() \
     .add_response_header("X-Cache", "HIT") \
     .remove_response_header("X-Powered-By")
 
-# Audit metadata (appears in Sentinel logs)
+# Audit metadata (appears in Zentinel logs)
 Decision.deny() \
     .with_tag("blocked") \
     .with_rule_id("SQLI-001") \
@@ -251,7 +251,7 @@ For agents with typed configuration:
 
 ```python
 from dataclasses import dataclass
-from sentinel_agent_sdk import ConfigurableAgent, Decision, Request
+from zentinel_agent_sdk import ConfigurableAgent, Decision, Request
 
 
 @dataclass
@@ -299,7 +299,7 @@ python my_agent.py \
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--socket PATH` | Unix socket path | `/tmp/sentinel-agent.sock` |
+| `--socket PATH` | Unix socket path | `/tmp/zentinel-agent.sock` |
 | `--log-level LEVEL` | DEBUG, INFO, WARNING, ERROR | `INFO` |
 | `--json-logs` | Output logs as JSON | disabled |
 
@@ -308,7 +308,7 @@ python my_agent.py \
 ```python
 import asyncio
 from pathlib import Path
-from sentinel_agent_sdk import AgentRunner
+from zentinel_agent_sdk import AgentRunner
 
 
 async def main():
@@ -327,9 +327,9 @@ if __name__ == "__main__":
 
 ---
 
-## Sentinel Configuration
+## Zentinel Configuration
 
-Configure Sentinel to connect to your agent:
+Configure Zentinel to connect to your agent:
 
 ```kdl
 agents {
@@ -401,7 +401,7 @@ uv sync --all-extras
 uv run pytest
 
 # Run tests with coverage
-uv run pytest --cov=sentinel_agent_sdk
+uv run pytest --cov=zentinel_agent_sdk
 
 # Type checking
 uv run mypy src
@@ -425,8 +425,8 @@ pytest
 ### Project Structure
 
 ```
-sentinel-agent-python-sdk/
-├── src/sentinel_agent_sdk/
+zentinel-agent-python-sdk/
+├── src/zentinel_agent_sdk/
 │   ├── __init__.py      # Public API exports
 │   ├── agent.py         # Agent and ConfigurableAgent base classes
 │   ├── decision.py      # Decision builder
@@ -446,7 +446,7 @@ sentinel-agent-python-sdk/
 
 ## Protocol
 
-This SDK implements Sentinel Agent Protocol v1:
+This SDK implements Zentinel Agent Protocol v1:
 
 - **Transport**: Unix domain sockets (UDS) or gRPC
 - **Encoding**: Length-prefixed JSON (4-byte big-endian length prefix) for UDS
@@ -456,15 +456,15 @@ This SDK implements Sentinel Agent Protocol v1:
 
 The protocol is designed for low latency and high throughput, with support for streaming body inspection.
 
-For the canonical protocol specification, see the [Sentinel Agent Protocol documentation](https://github.com/raskell-io/sentinel/tree/main/crates/agent-protocol).
+For the canonical protocol specification, see the [Zentinel Agent Protocol documentation](https://github.com/zentinelproxy/zentinel/tree/main/crates/agent-protocol).
 
 ---
 
 ## Community
 
-- 🐛 [Issues](https://github.com/raskell-io/sentinel-agent-python-sdk/issues) — Bug reports and feature requests
-- 💬 [Sentinel Discussions](https://github.com/raskell-io/sentinel/discussions) — Questions and ideas
-- 📖 [Sentinel Documentation](https://sentinel.raskell.io/docs) — Proxy documentation
+- 🐛 [Issues](https://github.com/zentinelproxy/zentinel-agent-python-sdk/issues) — Bug reports and feature requests
+- 💬 [Zentinel Discussions](https://github.com/zentinelproxy/zentinel/discussions) — Questions and ideas
+- 📖 [Zentinel Documentation](https://zentinelproxy.io/docs) — Proxy documentation
 
 Contributions welcome. Please open an issue to discuss significant changes before submitting a PR.
 

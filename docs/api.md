@@ -2,10 +2,10 @@
 
 ## Agent
 
-The base class for all Sentinel agents.
+The base class for all Zentinel agents.
 
 ```python
-from sentinel_agent_sdk import Agent
+from zentinel_agent_sdk import Agent
 ```
 
 ### Abstract Properties
@@ -46,7 +46,7 @@ Called when request headers are received. This is the main entry point for reque
 async def on_request_body(self, request: Request) -> Decision: ...
 ```
 
-Called when the request body is available (requires body inspection to be enabled in Sentinel).
+Called when the request body is available (requires body inspection to be enabled in Zentinel).
 
 **Default**: Returns `Decision.allow()`
 
@@ -90,7 +90,7 @@ Called when request processing is complete. Use for logging or metrics.
 A generic agent class with typed configuration support.
 
 ```python
-from sentinel_agent_sdk import ConfigurableAgent
+from zentinel_agent_sdk import ConfigurableAgent
 from dataclasses import dataclass
 
 @dataclass
@@ -149,7 +149,7 @@ Called after new configuration is applied.
 Fluent builder for agent decisions.
 
 ```python
-from sentinel_agent_sdk import Decision
+from zentinel_agent_sdk import Decision
 ```
 
 ### Factory Methods
@@ -337,7 +337,7 @@ Decision.deny().with_metadata("blocked_ip", "192.168.1.100")
 Represents an incoming HTTP request.
 
 ```python
-from sentinel_agent_sdk import Request
+from zentinel_agent_sdk import Request
 ```
 
 ### Properties
@@ -465,7 +465,7 @@ request.timestamp       # Request timestamp
 Represents an HTTP response from the upstream.
 
 ```python
-from sentinel_agent_sdk import Response
+from zentinel_agent_sdk import Response
 ```
 
 ### Properties
@@ -513,7 +513,7 @@ Get a header value.
 Runner for starting and managing an agent.
 
 ```python
-from sentinel_agent_sdk import AgentRunner
+from zentinel_agent_sdk import AgentRunner
 ```
 
 ### Usage
@@ -553,7 +553,7 @@ Set the log level (DEBUG, INFO, WARNING, ERROR).
 Convenience function to run an agent with CLI argument parsing.
 
 ```python
-from sentinel_agent_sdk import run_agent
+from zentinel_agent_sdk import run_agent
 
 if __name__ == "__main__":
     run_agent(MyAgent())

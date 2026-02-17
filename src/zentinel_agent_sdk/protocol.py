@@ -1,4 +1,4 @@
-"""Protocol definitions for Sentinel agent communication."""
+"""Protocol definitions for Zentinel agent communication."""
 
 from __future__ import annotations
 

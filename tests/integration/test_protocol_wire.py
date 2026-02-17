@@ -3,7 +3,7 @@
 These tests verify that the SDK correctly handles the wire protocol
 by mocking the proxy side and testing full message round-trips.
 
-This allows testing protocol compatibility without requiring Sentinel.
+This allows testing protocol compatibility without requiring Zentinel.
 """
 
 import asyncio
@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 
-from sentinel_agent_sdk import Agent, Decision, Request, Response
-from sentinel_agent_sdk.protocol import PROTOCOL_VERSION, EventType
-from sentinel_agent_sdk.runner import AgentHandler
+from zentinel_agent_sdk import Agent, Decision, Request, Response
+from zentinel_agent_sdk.protocol import PROTOCOL_VERSION, EventType
+from zentinel_agent_sdk.runner import AgentHandler
 
 
 class SimpleTestAgent(Agent):
@@ -59,7 +59,7 @@ class TestWireProtocolRoundTrip:
     @pytest.mark.asyncio
     async def test_request_headers_event_roundtrip(self, handler: AgentHandler) -> None:
         """Test request headers event handling."""
-        # Simulate what Sentinel sends
+        # Simulate what Zentinel sends
         request_event = {
             "version": PROTOCOL_VERSION,
             "event_type": "request_headers",
@@ -229,7 +229,7 @@ class TestSocketCommunication:
     @pytest.mark.asyncio
     async def test_socket_roundtrip(self) -> None:
         """Test full socket communication round-trip."""
-        from sentinel_agent_sdk.runner import AgentRunner
+        from zentinel_agent_sdk.runner import AgentRunner
 
         with tempfile.TemporaryDirectory() as tmpdir:
             socket_path = Path(tmpdir) / "test.sock"
@@ -316,12 +316,12 @@ class TestMessageEncoding:
 
     def test_max_message_size_check(self) -> None:
         """Verify max message size is enforced."""
-        from sentinel_agent_sdk.protocol import MAX_MESSAGE_SIZE
+        from zentinel_agent_sdk.protocol import MAX_MESSAGE_SIZE
 
         # Create message that would exceed limit
         large_data = {"data": "x" * (MAX_MESSAGE_SIZE + 1)}
 
-        from sentinel_agent_sdk.protocol import encode_message as sdk_encode
+        from zentinel_agent_sdk.protocol import encode_message as sdk_encode
 
         with pytest.raises(ValueError, match="exceeds maximum"):
             sdk_encode(large_data)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Configurable Sentinel agent example.
+"""Configurable Zentinel agent example.
 
 This example demonstrates an agent with typed configuration that:
 - Accepts rate limit configuration from the proxy
@@ -12,7 +12,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
-from sentinel_agent_sdk import (
+from zentinel_agent_sdk import (
     ConfigurableAgent,
     Decision,
     Request,

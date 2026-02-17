@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, TypeVar
 
-from sentinel_agent_sdk.protocol import ResponseHeadersEvent
+from zentinel_agent_sdk.protocol import ResponseHeadersEvent
 
 T = TypeVar("T")
 

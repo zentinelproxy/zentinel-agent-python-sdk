@@ -12,9 +12,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from sentinel_agent_sdk.agent import Agent
-from sentinel_agent_sdk.decision import Decision
-from sentinel_agent_sdk.protocol import (
+from zentinel_agent_sdk.agent import Agent
+from zentinel_agent_sdk.decision import Decision
+from zentinel_agent_sdk.protocol import (
     ConfigureEvent,
     EventType,
     GuardrailInspectEvent,
@@ -26,17 +26,17 @@ from sentinel_agent_sdk.protocol import (
     read_message,
     write_message,
 )
-from sentinel_agent_sdk.request import Request
-from sentinel_agent_sdk.response import Response
+from zentinel_agent_sdk.request import Request
+from zentinel_agent_sdk.response import Response
 
-logger = logging.getLogger("sentinel_agent_sdk")
+logger = logging.getLogger("zentinel_agent_sdk")
 
 
 @dataclass
 class RunnerConfig:
     """Configuration for the agent runner."""
 
-    socket_path: Path = field(default_factory=lambda: Path("/tmp/sentinel-agent.sock"))
+    socket_path: Path = field(default_factory=lambda: Path("/tmp/zentinel-agent.sock"))
     name: str = "agent"
     json_logs: bool = False
     log_level: str = "INFO"
@@ -411,11 +411,11 @@ def parse_args() -> argparse.Namespace:
     Returns:
         Parsed arguments namespace.
     """
-    parser = argparse.ArgumentParser(description="Sentinel Agent")
+    parser = argparse.ArgumentParser(description="Zentinel Agent")
     parser.add_argument(
         "--socket",
         type=Path,
-        default=Path("/tmp/sentinel-agent.sock"),
+        default=Path("/tmp/zentinel-agent.sock"),
         help="Unix socket path",
     )
     parser.add_argument(

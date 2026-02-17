@@ -1,16 +1,16 @@
 # Quickstart Guide
 
-This guide will help you create your first Sentinel agent in under 5 minutes.
+This guide will help you create your first Zentinel agent in under 5 minutes.
 
 ## Prerequisites
 
 - Python 3.10+
-- Sentinel proxy (for testing with real traffic)
+- Zentinel proxy (for testing with real traffic)
 
 ## Step 1: Install the SDK
 
 ```bash
-pip install sentinel-agent-sdk
+pip install zentinel-agent-sdk
 ```
 
 ## Step 2: Create Your Agent
@@ -19,11 +19,11 @@ Create a file called `my_agent.py`:
 
 ```python
 #!/usr/bin/env python3
-from sentinel_agent_sdk import Agent, Decision, Request, run_agent
+from zentinel_agent_sdk import Agent, Decision, Request, run_agent
 
 
 class MyAgent(Agent):
-    """My first Sentinel agent."""
+    """My first Zentinel agent."""
 
     @property
     def name(self) -> str:
@@ -65,9 +65,9 @@ You should see:
 2024-01-15 10:30:00 [my-agent] INFO: Agent 'my-agent' listening on /tmp/my-agent.sock
 ```
 
-## Step 4: Configure Sentinel
+## Step 4: Configure Zentinel
 
-Add the agent to your Sentinel configuration (`sentinel.kdl`):
+Add the agent to your Zentinel configuration (`zentinel.kdl`):
 
 ```kdl
 agents {
@@ -101,7 +101,7 @@ routes {
 
 ## Step 5: Test It
 
-With Sentinel running, send a test request:
+With Zentinel running, send a test request:
 
 ```bash
 # This should pass through
@@ -117,7 +117,7 @@ The `run_agent` function supports these CLI arguments:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--socket PATH` | Unix socket path | `/tmp/sentinel-agent.sock` |
+| `--socket PATH` | Unix socket path | `/tmp/zentinel-agent.sock` |
 | `--log-level LEVEL` | Log level (DEBUG, INFO, WARNING, ERROR) | `INFO` |
 | `--json-logs` | Enable JSON log format | disabled |
 
@@ -125,4 +125,4 @@ The `run_agent` function supports these CLI arguments:
 
 - Read the [API Reference](api.md) for complete documentation
 - See [Examples](examples.md) for common patterns
-- Learn about [Sentinel Configuration](configuration.md) options
+- Learn about [Zentinel Configuration](configuration.md) options

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Simple Sentinel agent example.
+"""Simple Zentinel agent example.
 
 This example demonstrates a basic agent that:
 - Blocks requests to /admin paths
@@ -7,7 +7,7 @@ This example demonstrates a basic agent that:
 - Logs request completions
 """
 
-from sentinel_agent_sdk import Agent, Decision, Request, Response, run_agent
+from zentinel_agent_sdk import Agent, Decision, Request, Response, run_agent
 
 
 class SimpleAgent(Agent):

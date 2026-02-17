@@ -5,22 +5,22 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
-from sentinel_agent_sdk.decision import Decision
-from sentinel_agent_sdk.protocol import (
+from zentinel_agent_sdk.decision import Decision
+from zentinel_agent_sdk.protocol import (
     GuardrailInspectEvent,
     GuardrailResponse,
 )
-from sentinel_agent_sdk.request import Request
-from sentinel_agent_sdk.response import Response
+from zentinel_agent_sdk.request import Request
+from zentinel_agent_sdk.response import Response
 
 T = TypeVar("T")
 
 
 class Agent(ABC):
-    """Base class for Sentinel agents.
+    """Base class for Zentinel agents.
 
     Implement this class to create a custom agent that can process
-    HTTP requests and responses in the Sentinel proxy pipeline.
+    HTTP requests and responses in the Zentinel proxy pipeline.
 
     Example:
         class MyAgent(Agent):

@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# Sentinel Agent Python SDK Integration Tests
-# Tests the Python SDK against a running Sentinel proxy
+# Zentinel Agent Python SDK Integration Tests
+# Tests the Python SDK against a running Zentinel proxy
 #
 # Prerequisites:
-# - Sentinel built at SENTINEL_PATH or /Users/zara/Development/github.com/raskell-io/sentinel
+# - Zentinel built at ZENTINEL_PATH or /Users/zara/Development/github.com/zentinelproxy/zentinel
 # - Python SDK installed (uv sync)
 # - curl installed
 #
@@ -21,9 +21,9 @@ NC='\033[0m' # No Color
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SDK_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-SENTINEL_PATH="${SENTINEL_PATH:-/Users/zara/Development/github.com/raskell-io/sentinel}"
+ZENTINEL_PATH="${ZENTINEL_PATH:-/Users/zara/Development/github.com/zentinelproxy/zentinel}"
 
-TEST_DIR="/tmp/sentinel-python-sdk-test-$$"
+TEST_DIR="/tmp/zentinel-python-sdk-test-$$"
 PROXY_PORT=28080
 BACKEND_PORT=28081
 
@@ -95,9 +95,9 @@ trap cleanup EXIT INT TERM
 check_prerequisites() {
     log_info "Checking prerequisites..."
 
-    if [[ ! -f "$SENTINEL_PATH/target/release/sentinel" ]]; then
-        log_failure "Sentinel binary not found at $SENTINEL_PATH/target/release/sentinel"
-        log_info "Build Sentinel with: cd $SENTINEL_PATH && cargo build --release"
+    if [[ ! -f "$ZENTINEL_PATH/target/release/zentinel" ]]; then
+        log_failure "Zentinel binary not found at $ZENTINEL_PATH/target/release/zentinel"
+        log_info "Build Zentinel with: cd $ZENTINEL_PATH && cargo build --release"
         exit 1
     fi
 
@@ -119,7 +119,7 @@ setup_test_environment() {
     log_info "Setting up test environment..."
     mkdir -p "$TEST_DIR"
 
-    # Create test configuration for Sentinel
+    # Create test configuration for Zentinel
     cat > "$PROXY_CONFIG" <<'EOFCONFIG'
 system {
     worker-threads 2
@@ -345,13 +345,13 @@ start_python_agent() {
     fi
 }
 
-# Start Sentinel proxy
+# Start Zentinel proxy
 start_proxy() {
-    log_info "Starting Sentinel proxy..."
+    log_info "Starting Zentinel proxy..."
 
-    cd "$SENTINEL_PATH"
-    RUST_LOG=debug SENTINEL_CONFIG="$PROXY_CONFIG" \
-        ./target/release/sentinel \
+    cd "$ZENTINEL_PATH"
+    RUST_LOG=debug ZENTINEL_CONFIG="$PROXY_CONFIG" \
+        ./target/release/zentinel \
         > "$TEST_DIR/proxy.log" 2>&1 &
 
     PROXY_PID=$!
@@ -548,7 +548,7 @@ test_post_request() {
 
 main() {
     echo "=============================================="
-    echo "Sentinel Agent Python SDK Integration Tests"
+    echo "Zentinel Agent Python SDK Integration Tests"
     echo "=============================================="
     echo
 
@@ -607,7 +607,7 @@ main() {
     if [[ $TESTS_FAILED -eq 0 ]]; then
         echo -e "${GREEN}All tests passed!${NC}"
         echo
-        echo "The Python SDK is compatible with Sentinel."
+        echo "The Python SDK is compatible with Zentinel."
         exit 0
     else
         echo -e "${RED}Some tests failed!${NC}"

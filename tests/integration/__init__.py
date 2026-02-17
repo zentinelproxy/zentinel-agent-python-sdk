@@ -1,1 +1,1 @@
-"""Integration tests for Sentinel Agent Python SDK."""
+"""Integration tests for Zentinel Agent Python SDK."""

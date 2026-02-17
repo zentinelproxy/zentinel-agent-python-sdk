@@ -1,18 +1,18 @@
-"""Protocol conformance tests for Sentinel Agent SDK.
+"""Protocol conformance tests for Zentinel Agent SDK.
 
 These tests verify that the Python SDK produces JSON that is compatible
-with the Rust protocol implementation in sentinel-agent-protocol.
+with the Rust protocol implementation in zentinel-agent-protocol.
 
 The source of truth is:
-/Users/zara/Development/github.com/raskell-io/sentinel/crates/agent-protocol/src/protocol.rs
+/Users/zara/Development/github.com/zentinelproxy/zentinel/crates/agent-protocol/src/protocol.rs
 """
 
 import json
 
 import pytest
 
-from sentinel_agent_sdk import Decision
-from sentinel_agent_sdk.protocol import (
+from zentinel_agent_sdk import Decision
+from zentinel_agent_sdk.protocol import (
     PROTOCOL_VERSION,
     AgentResponse,
     AuditMetadata,
@@ -139,7 +139,7 @@ class TestAgentResponseSerialization:
         """Response includes header operations."""
         response = (
             Decision.allow()
-            .add_request_header("X-Forwarded-By", "sentinel")
+            .add_request_header("X-Forwarded-By", "zentinel")
             .remove_request_header("X-Internal")
             .add_response_header("X-Cache", "HIT")
             .build()
@@ -148,7 +148,7 @@ class TestAgentResponseSerialization:
 
         assert len(data["request_headers"]) == 2
         assert data["request_headers"][0] == {
-            "set": {"name": "X-Forwarded-By", "value": "sentinel"}
+            "set": {"name": "X-Forwarded-By", "value": "zentinel"}
         }
         assert data["request_headers"][1] == {"remove": {"name": "X-Internal"}}
         assert len(data["response_headers"]) == 1

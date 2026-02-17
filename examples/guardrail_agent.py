@@ -8,7 +8,7 @@ This example demonstrates a guardrail agent that:
 """
 
 import re
-from sentinel_agent_sdk import (
+from zentinel_agent_sdk import (
     Agent,
     Decision,
     Request,
