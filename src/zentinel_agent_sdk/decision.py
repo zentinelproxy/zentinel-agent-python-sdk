@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from sentinel_agent_sdk.protocol import AgentResponse, AuditMetadata, HeaderOp
+from zentinel_agent_sdk.protocol import AgentResponse, AuditMetadata, HeaderOp
 
 
 class Decision:

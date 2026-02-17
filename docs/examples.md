@@ -1,13 +1,13 @@
 # Examples
 
-Common patterns and use cases for Sentinel agents.
+Common patterns and use cases for Zentinel agents.
 
 ## Basic Request Blocking
 
 Block requests based on path patterns:
 
 ```python
-from sentinel_agent_sdk import Agent, Decision, Request, run_agent
+from zentinel_agent_sdk import Agent, Decision, Request, run_agent
 
 
 class BlockingAgent(Agent):
@@ -35,7 +35,7 @@ class BlockingAgent(Agent):
 Block or allow requests based on client IP:
 
 ```python
-from sentinel_agent_sdk import Agent, Decision, Request, run_agent
+from zentinel_agent_sdk import Agent, Decision, Request, run_agent
 
 
 class IPFilterAgent(Agent):
@@ -67,7 +67,7 @@ Validate JWT tokens:
 
 ```python
 import jwt
-from sentinel_agent_sdk import Agent, Decision, Request, run_agent
+from zentinel_agent_sdk import Agent, Decision, Request, run_agent
 
 
 class AuthAgent(Agent):
@@ -124,7 +124,7 @@ Simple in-memory rate limiting:
 ```python
 import time
 from collections import defaultdict
-from sentinel_agent_sdk import Agent, Decision, Request, run_agent
+from zentinel_agent_sdk import Agent, Decision, Request, run_agent
 
 
 class RateLimitAgent(Agent):
@@ -170,7 +170,7 @@ class RateLimitAgent(Agent):
 Add, remove, or modify headers:
 
 ```python
-from sentinel_agent_sdk import Agent, Decision, Request, Response, run_agent
+from zentinel_agent_sdk import Agent, Decision, Request, Response, run_agent
 
 
 class HeaderAgent(Agent):
@@ -184,7 +184,7 @@ class HeaderAgent(Agent):
         return (
             Decision.allow()
             # Add headers for upstream
-            .add_request_header("X-Forwarded-By", "sentinel")
+            .add_request_header("X-Forwarded-By", "zentinel")
             .add_request_header("X-Request-ID", request.correlation_id)
             # Remove sensitive headers
             .remove_request_header("X-Internal-Token")
@@ -209,7 +209,7 @@ Agent with runtime configuration:
 
 ```python
 from dataclasses import dataclass
-from sentinel_agent_sdk import ConfigurableAgent, Decision, Request, run_agent
+from zentinel_agent_sdk import ConfigurableAgent, Decision, Request, run_agent
 
 
 @dataclass
@@ -255,7 +255,7 @@ class ConfigurableBlocker(ConfigurableAgent[Config]):
 Log all requests with timing:
 
 ```python
-from sentinel_agent_sdk import Agent, Decision, Request, run_agent
+from zentinel_agent_sdk import Agent, Decision, Request, run_agent
 
 
 class LoggingAgent(Agent):
@@ -290,7 +290,7 @@ class LoggingAgent(Agent):
 Validate request content types:
 
 ```python
-from sentinel_agent_sdk import Agent, Decision, Request, run_agent
+from zentinel_agent_sdk import Agent, Decision, Request, run_agent
 
 
 class ContentTypeAgent(Agent):
@@ -335,7 +335,7 @@ class ContentTypeAgent(Agent):
 Redirect requests to different URLs:
 
 ```python
-from sentinel_agent_sdk import Agent, Decision, Request, run_agent
+from zentinel_agent_sdk import Agent, Decision, Request, run_agent
 
 
 class RedirectAgent(Agent):
@@ -369,7 +369,7 @@ class RedirectAgent(Agent):
 Agent that performs multiple validations:
 
 ```python
-from sentinel_agent_sdk import Agent, Decision, Request, run_agent
+from zentinel_agent_sdk import Agent, Decision, Request, run_agent
 
 
 class SecurityAgent(Agent):

@@ -2,7 +2,7 @@
 """Blocking agent for integration testing.
 
 This agent blocks requests to specific paths, useful for testing
-that the SDK correctly communicates block decisions to Sentinel.
+that the SDK correctly communicates block decisions to Zentinel.
 """
 
 import argparse
@@ -14,8 +14,8 @@ from pathlib import Path
 # Add parent to path for imports when run directly
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from sentinel_agent_sdk import Agent, Decision, Request
-from sentinel_agent_sdk.runner import AgentRunner
+from zentinel_agent_sdk import Agent, Decision, Request
+from zentinel_agent_sdk.runner import AgentRunner
 
 
 class BlockingAgent(Agent):

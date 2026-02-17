@@ -1,9 +1,9 @@
-"""Tests for the Sentinel Agent SDK."""
+"""Tests for the Zentinel Agent SDK."""
 
 import pytest
 
-from sentinel_agent_sdk import Agent, Decision, Request, Response
-from sentinel_agent_sdk.protocol import (
+from zentinel_agent_sdk import Agent, Decision, Request, Response
+from zentinel_agent_sdk.protocol import (
     PROTOCOL_VERSION,
     RequestHeadersEvent,
     RequestMetadata,

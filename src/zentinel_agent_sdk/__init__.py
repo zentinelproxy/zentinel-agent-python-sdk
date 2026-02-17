@@ -1,11 +1,11 @@
-"""Sentinel Agent SDK for Python.
+"""Zentinel Agent SDK for Python.
 
-A Python SDK for building agents that integrate with Sentinel reverse proxy.
+A Python SDK for building agents that integrate with Zentinel reverse proxy.
 """
 
-from sentinel_agent_sdk.agent import Agent, ConfigurableAgent
-from sentinel_agent_sdk.decision import Decision, decisions
-from sentinel_agent_sdk.protocol import (
+from zentinel_agent_sdk.agent import Agent, ConfigurableAgent
+from zentinel_agent_sdk.decision import Decision, decisions
+from zentinel_agent_sdk.protocol import (
     PROTOCOL_VERSION,
     DetectionSeverity,
     GuardrailDetection,
@@ -14,9 +14,9 @@ from sentinel_agent_sdk.protocol import (
     GuardrailResponse,
     TextSpan,
 )
-from sentinel_agent_sdk.request import Request
-from sentinel_agent_sdk.response import Response
-from sentinel_agent_sdk.runner import AgentRunner, RunnerConfig, run_agent
+from zentinel_agent_sdk.request import Request
+from zentinel_agent_sdk.response import Response
+from zentinel_agent_sdk.runner import AgentRunner, RunnerConfig, run_agent
 
 __version__ = "0.1.0"
 __all__ = [

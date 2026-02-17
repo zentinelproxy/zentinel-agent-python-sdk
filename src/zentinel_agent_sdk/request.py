@@ -6,7 +6,7 @@ import json
 from typing import Any, TypeVar
 from urllib.parse import parse_qs, urlparse
 
-from sentinel_agent_sdk.protocol import RequestHeadersEvent, RequestMetadata
+from zentinel_agent_sdk.protocol import RequestHeadersEvent, RequestMetadata
 
 T = TypeVar("T")
 

@@ -545,7 +545,7 @@ wheels = [
 ]
 
 [[package]]
-name = "sentinel-agent-sdk"
+name = "zentinel-agent-sdk"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

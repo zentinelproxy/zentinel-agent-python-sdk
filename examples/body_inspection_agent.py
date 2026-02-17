@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Body inspection Sentinel agent example.
+"""Body inspection Zentinel agent example.
 
 This example demonstrates an agent that inspects request and response bodies:
 - Validates JSON request bodies
@@ -10,7 +10,7 @@ This example demonstrates an agent that inspects request and response bodies:
 import re
 from typing import Any
 
-from sentinel_agent_sdk import Agent, Decision, Request, Response, run_agent
+from zentinel_agent_sdk import Agent, Decision, Request, Response, run_agent
 
 
 class BodyInspectionAgent(Agent):

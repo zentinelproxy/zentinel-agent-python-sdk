@@ -13,8 +13,8 @@ from pathlib import Path
 # Add parent to path for imports when run directly
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from sentinel_agent_sdk import Agent, Decision, Request, Response
-from sentinel_agent_sdk.runner import AgentRunner
+from zentinel_agent_sdk import Agent, Decision, Request, Response
+from zentinel_agent_sdk.runner import AgentRunner
 
 
 class HeaderMutationAgent(Agent):
