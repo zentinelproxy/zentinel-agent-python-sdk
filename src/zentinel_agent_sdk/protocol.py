@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Any
 
 PROTOCOL_VERSION = 2
-MAX_MESSAGE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_MESSAGE_SIZE = 10 * 1024 * 1024  # 10MB - legacy v1 limit. V2 uses different limits per transport.
 
 
 class EventType(str, Enum):
@@ -474,7 +474,7 @@ def encode_message(data: dict[str, Any]) -> bytes:
 
 
 def decode_message(data: bytes) -> dict[str, Any]:
-    """Decode a length-prefixed JSON message."""
+    """Decode a length-prefixed message."""
     if len(data) < 4:
         raise ValueError("Message too short to contain length prefix")
     length = struct.unpack(">I", data[:4])[0]
