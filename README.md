@@ -76,7 +76,7 @@ python my_agent.py --socket /tmp/my-agent.sock
 | **Request/Response Wrappers** | Ergonomic access to headers, body, query params, metadata |
 | **Typed Configuration** | Generic `ConfigurableAgent[T]` with dataclass/Pydantic support |
 | **Async Native** | Built on asyncio for high-performance concurrent processing |
-| **Protocol Compatible** | Full compatibility with Zentinel agent protocol v1 |
+| **Protocol Compatible** | Full compatibility with Zentinel agent protocol v2 |
 
 ## Why Agents?
 
@@ -446,7 +446,7 @@ zentinel-agent-python-sdk/
 
 ## Protocol
 
-This SDK implements Zentinel Agent Protocol v1:
+This SDK implements Zentinel Agent Protocol v2:
 
 - **Transport**: Unix domain sockets (UDS) or gRPC
 - **Encoding**: Length-prefixed JSON (4-byte big-endian length prefix) for UDS
