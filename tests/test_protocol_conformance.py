@@ -29,9 +29,9 @@ from zentinel_agent_sdk.protocol import (
 class TestProtocolVersion:
     """Verify protocol version matches."""
 
-    def test_protocol_version_is_one(self) -> None:
-        """Protocol version must be 1 to match Rust implementation."""
-        assert PROTOCOL_VERSION == 1
+    def test_protocol_version_is_two(self) -> None:
+        """Protocol version must be 2 to match Rust implementation."""
+        assert PROTOCOL_VERSION == 2
 
 
 class TestDecisionSerialization:
