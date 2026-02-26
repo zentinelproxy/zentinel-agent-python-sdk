@@ -4,7 +4,7 @@ A Python SDK for building agents that integrate with the [Zentinel](https://gith
 
 ## Overview
 
-Zentinel agents are external processors that can inspect and modify HTTP traffic passing through the Zentinel proxy. They communicate with Zentinel over Unix sockets using a length-prefixed JSON protocol.
+Zentinel agents are external processors that can inspect and modify HTTP traffic passing through the Zentinel proxy. They communicate with Zentinel over Unix sockets (UDS) or gRPC using the v2 agent protocol.
 
 Agents can:
 
