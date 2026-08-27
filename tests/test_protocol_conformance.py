@@ -263,7 +263,7 @@ class TestAgentRequestEnvelope:
         """AgentRequest envelope has version, event_type, payload."""
         # This is what the proxy sends to agents
         envelope = {
-            "version": 1,
+            "version": PROTOCOL_VERSION,
             "event_type": "request_headers",
             "payload": {
                 "metadata": {
@@ -320,7 +320,7 @@ class TestWireFormatRoundTrip:
         parsed = json.loads(json_str)
 
         # Verify structure matches Rust expectations
-        assert parsed["version"] == 1
+        assert parsed["version"] == PROTOCOL_VERSION
         assert parsed["decision"]["block"]["status"] == 403
         assert parsed["decision"]["block"]["body"] == "Access denied"
         assert parsed["audit"]["tags"] == ["security"]
