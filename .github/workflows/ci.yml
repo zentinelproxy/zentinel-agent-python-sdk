@@ -1,0 +1,63 @@
+# Build, import and test the SDK on every push and pull request.
+#
+# This repository had no CI at all. It shipped for six months in a state where a
+# clean checkout could not import its own package -- `__init__.py` imported a
+# `v2` subpackage that had never been committed -- and the test suite could not
+# run, because both test modules fail at *collection* when the import fails.
+#
+# A single `python -c "import zentinel_agent_sdk"` on any commit since February
+# would have caught it, which is why the import smoke test below is its own step
+# rather than being left implicit in the pytest run.
+#
+# `ruff` and `mypy` are deliberately not steps here yet. Both are declared dev
+# dependencies and both are configured in pyproject.toml, but the committed tree
+# currently fails `ruff check` with 23 findings and `mypy --strict` with 4, none
+# of them in code this workflow adds. Turning them on now would land a workflow
+# that is red on arrival, and a red-on-arrival workflow teaches people to ignore
+# the whole thing. Tracked separately.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor is what pyproject declares in requires-python; the ceiling is
+        # the newest release the declared classifiers claim to support.
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install package and dev dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+
+      - name: Import the package
+        # The check that six months of green-looking silence did not perform.
+        # Deliberately importing the subpackage explicitly as well: `v2` is
+        # re-exported from `__init__`, so a failure here is unambiguous.
+        run: |
+          python -c "import zentinel_agent_sdk; print(zentinel_agent_sdk.__version__)"
+          python -c "from zentinel_agent_sdk import v2; print('protocol', v2.PROTOCOL_VERSION_2)"
+
+      - name: Test
+        # `tests/integration` needs a running proxy and is excluded; it is driven
+        # by tests/integration/test_integration.sh, not by pytest.
+        run: python -m pytest tests --ignore=tests/integration -v
