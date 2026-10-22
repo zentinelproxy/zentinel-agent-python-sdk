@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import contextlib
+import json
 import logging
 import os
 import signal
@@ -14,11 +15,23 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from zentinel_agent_sdk.protocol import read_message, write_message
-from zentinel_agent_sdk.v2.agent import AgentV2
-from zentinel_agent_sdk.v2.handler import AgentHandlerV2
+from zentinel_agent_sdk.agent import Agent
+from zentinel_agent_sdk.v2.handler import AgentHandlerV2, correlation_id_of
+from zentinel_agent_sdk.v2.types import HandshakeRequest
+from zentinel_agent_sdk.v2.uds import MessageType, encode_json, read_frame, write_frame
 
 logger = logging.getLogger("zentinel_agent_sdk.v2")
+
+_UDS_EVENT_TYPES: dict[int, str] = {
+    MessageType.REQUEST_HEADERS: "request_headers",
+    MessageType.REQUEST_BODY_CHUNK: "request_body_chunk",
+    MessageType.RESPONSE_HEADERS: "response_headers",
+    MessageType.RESPONSE_BODY_CHUNK: "response_body_chunk",
+    MessageType.REQUEST_COMPLETE: "request_complete",
+    MessageType.WEBSOCKET_FRAME: "websocket_frame",
+    MessageType.GUARDRAIL_INSPECT: "guardrail_inspect",
+    MessageType.CONFIGURE: "configure",
+}
 
 
 class TransportType(str, Enum):
@@ -79,17 +92,18 @@ class AgentRunnerV2:
             asyncio.run(runner.run())
     """
 
-    def __init__(self, agent: AgentV2) -> None:
+    def __init__(self, agent: Agent) -> None:
         """Initialize the runner with an agent.
 
         Args:
-            agent: The AgentV2 to run.
+            agent: The agent to run: an `AgentV2`, or a plain `Agent`
+                (capabilities are then derived from its name).
         """
         self._agent = agent
         self._handler = AgentHandlerV2(agent)
         self._config = V2RunnerConfig(name=agent.name)
         self._server: asyncio.Server | None = None
-        self._grpc_server: Any = None
+        self._connections: set[asyncio.StreamWriter] = set()
         self._shutdown_event = asyncio.Event()
 
     def with_name(self, name: str) -> AgentRunnerV2:
@@ -224,27 +238,76 @@ class AgentRunnerV2:
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
     ) -> None:
-        """Handle a single UDS connection from the proxy."""
-        peer = writer.get_extra_info("peername")
-        logger.debug(f"UDS connection from {peer}")
+        """Serve one proxy connection: handshake, then events.
+
+        The proxy multiplexes requests over a connection, so events are
+        handled concurrently and every response carries its correlation id
+        in `audit.custom`. Configure is handled before the next message is
+        read, so no request on the connection precedes its configuration.
+        """
+        self._connections.add(writer)
+        write_lock = asyncio.Lock()
+        tasks: set[asyncio.Task[None]] = set()
+
+        async def send(msg_type: int, payload: bytes) -> None:
+            async with write_lock:
+                await write_frame(writer, msg_type, payload)
+
+        async def respond(event_type: str, data: dict[str, Any]) -> None:
+            response = await self._handler.dispatch(event_type, data)
+            audit = response.setdefault("audit", {})
+            audit.setdefault("custom", {})["correlation_id"] = correlation_id_of(data)
+            await send(MessageType.AGENT_RESPONSE, encode_json(response))
 
         try:
-            while not self._shutdown_event.is_set():
-                message = await read_message(reader)
-                if message is None:
-                    break
+            frame = await read_frame(reader)
+            if frame is None:
+                return
+            msg_type, payload = frame
+            if msg_type != MessageType.HANDSHAKE_REQUEST:
+                logger.error(f"Expected a handshake request, got message type 0x{msg_type:02x}")
+                return
+            request = HandshakeRequest.from_dict(json.loads(payload))
+            handshake = await self._handler.on_handshake(request)
+            await send(MessageType.HANDSHAKE_RESPONSE, encode_json(handshake.to_dict()))
+            if not handshake.success:
+                return
+            logger.debug(f"Handshake completed with {request.proxy_id} {request.proxy_version}")
 
-                response = await self._handler.handle_event(message)
-                await write_message(writer, response)
+            while not self._shutdown_event.is_set():
+                frame = await read_frame(reader)
+                if frame is None:
+                    break
+                msg_type, payload = frame
+                if msg_type == MessageType.PING:
+                    await send(MessageType.PONG, payload)
+                    continue
+                event_type = _UDS_EVENT_TYPES.get(msg_type)
+                if event_type is None:
+                    if msg_type != MessageType.CANCEL:
+                        logger.debug(f"Ignoring message type 0x{msg_type:02x}")
+                    continue
+                data = json.loads(payload) if payload else {}
+                if msg_type == MessageType.CONFIGURE:
+                    await respond(event_type, data)
+                else:
+                    task = asyncio.create_task(respond(event_type, data))
+                    tasks.add(task)
+                    task.add_done_callback(tasks.discard)
+        except (ConnectionError, asyncio.CancelledError):
+            pass
         except Exception as e:
             logger.exception(f"UDS connection error: {e}")
         finally:
+            for task in tasks:
+                task.cancel()
+            self._connections.discard(writer)
             writer.close()
-            await writer.wait_closed()
-            logger.debug(f"UDS connection closed: {peer}")
+            with contextlib.suppress(Exception):
+                await writer.wait_closed()
 
     async def _run_uds_server(self) -> None:
-        """Run the UDS server."""
+        """Run the UDS server until shutdown."""
         socket_path = self._config.transport.uds_path
 
         # Clean up existing socket
@@ -264,45 +327,22 @@ class AgentRunnerV2:
 
         logger.info(f"UDS server listening on {socket_path}")
 
-        async with self._server:
-            with contextlib.suppress(asyncio.CancelledError):
-                await self._server.serve_forever()
-
-        # Cleanup
-        if socket_path.exists():
-            socket_path.unlink()
-
-    async def _run_grpc_server(self) -> None:
-        """Run the gRPC server."""
-        import importlib.util
-
-        if importlib.util.find_spec("grpc") is None:
-            raise ImportError(
-                "grpcio is required for gRPC transport. "
-                "Install with: pip install grpcio"
-            ) from None
-
-        from grpc import aio  # type: ignore[import-untyped]
-
-        address = self._config.transport.grpc_address
-
-        # Create a simple gRPC servicer that handles our protocol
-        server = aio.server()
-
-        # Add our service implementation
-        # For now, we'll use a simple unary RPC approach
-        # In production, this would use a proper proto definition
-        server.add_insecure_port(address)
-
-        logger.info(f"gRPC server listening on {address}")
-
-        await server.start()
-        self._grpc_server = server
-
         try:
             await self._shutdown_event.wait()
         finally:
-            await server.stop(grace=5.0)
+            self._server.close()
+            for writer in list(self._connections):
+                writer.close()
+            with contextlib.suppress(Exception):
+                await asyncio.wait_for(self._server.wait_closed(), timeout=5)
+            if socket_path.exists():
+                socket_path.unlink()
+
+    async def _run_grpc_server(self) -> None:
+        """Run the gRPC server (`zentinel.agent.v2.AgentServiceV2`) until shutdown."""
+        from zentinel_agent_sdk.v2.grpc_server import serve_grpc
+
+        await serve_grpc(self._handler, self._config.transport.grpc_address, self._shutdown_event)
 
     async def run(self) -> None:
         """Start the v2 agent server.
@@ -323,8 +363,6 @@ class AgentRunnerV2:
         def handle_signal() -> None:
             logger.info("Shutdown signal received")
             self._shutdown_event.set()
-            if self._server:
-                self._server.close()
 
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, handle_signal)
@@ -365,8 +403,8 @@ def parse_v2_args() -> argparse.Namespace:
     parser.add_argument(
         "--socket",
         type=Path,
-        default=Path("/tmp/zentinel-agent.sock"),
-        help="Unix socket path",
+        default=None,
+        help="Unix socket path (default /tmp/zentinel-agent.sock unless --grpc is given)",
     )
     parser.add_argument(
         "--json-logs",
@@ -382,13 +420,16 @@ def parse_v2_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def run_agent_v2(agent: AgentV2) -> None:
+def run_agent_v2(agent: Agent) -> None:
     """Convenience function to run a v2 agent from main.
 
     Parses command line arguments and runs the agent.
 
     Args:
-        agent: The AgentV2 to run.
+        agent: The agent to run.
+
+    `--socket PATH` serves the Unix socket, `--grpc HOST:PORT` gRPC; both
+    together serve both.
 
     Example:
         if __name__ == "__main__":
@@ -398,11 +439,12 @@ def run_agent_v2(agent: AgentV2) -> None:
 
     runner = AgentRunnerV2(agent).with_name(agent.name)
 
-    runner = (
-        runner.with_both(args.grpc, args.socket)
-        if args.grpc
-        else runner.with_uds(args.socket)
-    )
+    if args.grpc and args.socket:
+        runner = runner.with_both(args.grpc, args.socket)
+    elif args.grpc:
+        runner = runner.with_grpc(args.grpc)
+    else:
+        runner = runner.with_uds(args.socket or Path("/tmp/zentinel-agent.sock"))
 
     if args.json_logs:
         runner = runner.with_json_logs()

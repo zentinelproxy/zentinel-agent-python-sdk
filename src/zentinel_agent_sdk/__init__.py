@@ -26,7 +26,7 @@ from zentinel_agent_sdk.runner import AgentRunner, RunnerConfig, run_agent
 # Import v2 module for convenient access
 from zentinel_agent_sdk import v2
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __all__ = [
     # Agent
     "Agent",

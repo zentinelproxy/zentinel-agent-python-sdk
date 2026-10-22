@@ -71,11 +71,13 @@ class AgentLimits:
     max_body_size: int = 10 * 1024 * 1024  # 10MB
     preferred_chunk_size: int = 64 * 1024  # 64KB
     max_processing_time_ms: int | None = None
+    max_concurrency: int = 100
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         result: dict[str, Any] = {
             "max_body_size": self.max_body_size,
+            "max_concurrency": self.max_concurrency,
             "preferred_chunk_size": self.preferred_chunk_size,
         }
         if self.max_processing_time_ms is not None:
@@ -98,6 +100,41 @@ class HealthConfig:
         }
 
 
+# Event type numbers as the UDS handshake reports them (`supported_events`).
+UDS_EVENT_NUMBERS: dict[str, int] = {
+    "configure": 0,
+    "request_headers": 1,
+    "request_body_chunk": 2,
+    "response_headers": 3,
+    "response_body_chunk": 4,
+    "request_complete": 5,
+    "websocket_frame": 6,
+    "guardrail_inspect": 7,
+}
+
+# Event type numbers of the gRPC `EventType` enum.
+GRPC_EVENT_NUMBERS: dict[str, int] = {
+    "request_headers": 1,
+    "request_body_chunk": 2,
+    "response_headers": 3,
+    "response_body_chunk": 4,
+    "request_complete": 5,
+    "websocket_frame": 6,
+    "guardrail_inspect": 7,
+    "configure": 8,
+}
+
+
+def _default_events() -> list[str]:
+    return [
+        "request_headers",
+        "request_body_chunk",
+        "response_headers",
+        "response_body_chunk",
+        "request_complete",
+    ]
+
+
 @dataclass
 class AgentCapabilities:
     """Agent capabilities for v2 handshake."""
@@ -108,6 +145,32 @@ class AgentCapabilities:
     features: AgentFeatures = field(default_factory=AgentFeatures)
     limits: AgentLimits = field(default_factory=AgentLimits)
     health: HealthConfig = field(default_factory=HealthConfig)
+    supported_events: list[str] = field(default_factory=_default_events)
+
+    def to_uds_dict(self) -> dict[str, Any]:
+        """Serialize as the UDS handshake's `capabilities` (`UdsCapabilities`).
+
+        Every field is required by the proxy.
+        """
+        return {
+            "agent_id": self.agent_id,
+            "name": self.name,
+            "version": self.version,
+            "supported_events": [
+                UDS_EVENT_NUMBERS[e] for e in self.supported_events if e in UDS_EVENT_NUMBERS
+            ],
+            "features": self.features.to_dict(),
+            "limits": {
+                "max_body_size": self.limits.max_body_size,
+                "max_concurrency": self.limits.max_concurrency,
+                "preferred_chunk_size": self.limits.preferred_chunk_size,
+            },
+        }
+
+    def with_events(self, *events: str) -> AgentCapabilities:
+        """Set the events the agent handles (e.g. "request_headers")."""
+        self.supported_events = list(events)
+        return self
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -262,7 +325,7 @@ class HandshakeRequest:
             supported_versions=data.get("supported_versions", [2]),
             proxy_id=data.get("proxy_id", ""),
             proxy_version=data.get("proxy_version", ""),
-            config=data.get("config", {}),
+            config=data.get("config") or {},
         )
 
 
@@ -275,13 +338,19 @@ class HandshakeResponse:
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        result: dict[str, Any] = {"success": self.success}
-        if self.capabilities:
-            result["capabilities"] = self.capabilities.to_dict()
-        if self.error:
-            result["error"] = self.error
-        return result
+        """Serialize as the UDS handshake response (`UdsHandshakeResponse`).
+
+        `capabilities` is required even when the handshake is refused, so a
+        placeholder is sent then.
+        """
+        caps = self.capabilities or AgentCapabilities("unknown", "unknown", "0.0.0")
+        return {
+            "protocol_version": PROTOCOL_VERSION_2,
+            "capabilities": caps.to_uds_dict(),
+            "success": self.success,
+            "error": self.error,
+            "encoding": "json",
+        }
 
     @classmethod
     def success_response(cls, capabilities: AgentCapabilities) -> HandshakeResponse:
