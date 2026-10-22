@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import base64
-import json
-import struct
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
 PROTOCOL_VERSION = 2
-MAX_MESSAGE_SIZE = 10 * 1024 * 1024  # 10MB - legacy v1 limit. V2 uses different limits per transport.
+
+# The wire framing lives in `zentinel_agent_sdk.v2.uds` (Unix socket) and
+# `zentinel_agent_sdk.v2.grpc_server` (gRPC).
 
 
 class EventType(str, Enum):
@@ -462,47 +462,3 @@ class AgentResponse:
             "response_body_mutation": self.response_body_mutation,
             "websocket_decision": self.websocket_decision,
         }
-
-
-def encode_message(data: dict[str, Any]) -> bytes:
-    """Encode a message with length prefix for socket transmission."""
-    json_bytes = json.dumps(data).encode("utf-8")
-    length = len(json_bytes)
-    if length > MAX_MESSAGE_SIZE:
-        raise ValueError(f"Message size {length} exceeds maximum {MAX_MESSAGE_SIZE}")
-    return struct.pack(">I", length) + json_bytes
-
-
-def decode_message(data: bytes) -> dict[str, Any]:
-    """Decode a length-prefixed message."""
-    if len(data) < 4:
-        raise ValueError("Message too short to contain length prefix")
-    length = struct.unpack(">I", data[:4])[0]
-    if length > MAX_MESSAGE_SIZE:
-        raise ValueError(f"Message size {length} exceeds maximum {MAX_MESSAGE_SIZE}")
-    json_bytes = data[4 : 4 + length]
-    return json.loads(json_bytes.decode("utf-8"))
-
-
-async def read_message(reader: Any) -> dict[str, Any] | None:
-    """Read a length-prefixed message from an async reader."""
-    length_bytes = await reader.read(4)
-    if not length_bytes or len(length_bytes) < 4:
-        return None
-
-    length = struct.unpack(">I", length_bytes)[0]
-    if length > MAX_MESSAGE_SIZE:
-        raise ValueError(f"Message size {length} exceeds maximum {MAX_MESSAGE_SIZE}")
-
-    data = await reader.read(length)
-    if len(data) < length:
-        raise ValueError(f"Incomplete message: expected {length}, got {len(data)}")
-
-    return json.loads(data.decode("utf-8"))
-
-
-async def write_message(writer: Any, data: dict[str, Any]) -> None:
-    """Write a length-prefixed message to an async writer."""
-    encoded = encode_message(data)
-    writer.write(encoded)
-    await writer.drain()

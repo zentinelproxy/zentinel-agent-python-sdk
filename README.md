@@ -29,13 +29,15 @@ The SDK gives you an asyncio `Agent` base class with one coroutine per event, a
 with Unix socket and gRPC transports and health reporting. It is not on PyPI;
 install it from GitHub.
 
-> **Status (checked on 2026-10-21 against Zentinel 0.6.50): agents built with this SDK do not connect to Zentinel.**
-> Both Unix socket runners (`run_agent` and `v2.AgentRunnerV2`) read and write
-> the v1 framing (length plus JSON, no message-type byte), so the proxy's v2
-> handshake fails, and the gRPC server does not implement the method the proxy
-> calls (`Method not found!`). Unit tests pass in CI; the wire tests in
-> `tests/integration` mock the proxy with the same v1 framing and are not run in
-> CI. The quick start shows the intended shape.
+> **Status (checked on 2026-10-22): agents built with this SDK work with Zentinel over agent protocol v2, on both the Unix socket and gRPC.**
+> CI runs them behind a real `zentinel` binary through the shared
+> [conformance harness](https://github.com/zentinelproxy/zentinel/tree/main/sdk-conformance):
+> handshake, configuration, request and response header changes, blocking,
+> request-body inspection, and reconnecting after the agent restarts all pass.
+> Delivery of the agent's `config { }` block to `on_configure` needs a Zentinel
+> with zentinel#603, which is on `main` but not in a release yet (26.10_7 and
+> earlier never send it). Version 0.2.0 and earlier spoke the v1 framing and
+> could not connect at all (zentinel#600).
 
 ## Quick start
 
@@ -103,8 +105,10 @@ request on the route then reaches `backend` with `X-Hello: from-agent`.
 instead of letting requests through unprocessed, so a wiring mistake shows up
 on the first request.
 
-With this SDK as it is today, that 503 is what you get: see the status note
-above.
+The same agent is [`examples/hello_agent.py`](examples/hello_agent.py), and
+CI runs it through the conformance harness. For gRPC, use
+`.with_grpc("127.0.0.1:50051")` and `grpc "http://127.0.0.1:50051"` in the
+agent block instead.
 
 ## Install
 
@@ -124,8 +128,14 @@ same name is the Rust SDK.)
 - **`ConfigurableAgent[T]`**: typed configuration from the agent's `config` block.
 - **`v2.AgentV2`**: adds `capabilities()` (required), health status and
   metrics; `v2.AgentRunnerV2` with `with_uds`, `with_grpc`, `with_both`;
-  `v2.run_agent_v2(agent)` reads `--socket`, `--grpc`, `--log-level`,
-  `--json-logs`.
+  `v2.run_agent_v2(agent)` reads `--socket`, `--grpc` (either or both),
+  `--log-level`, `--json-logs`.
+- **`run_agent(agent)` / `AgentRunner`**: the same v2 runner for a plain
+  `Agent`; `--socket` and optionally `--grpc`.
+- **Configuration**: `on_configure` receives the agent's `config { }` block on
+  every connection the proxy opens (each pooled one and every reconnect), so it
+  must be idempotent. Raising rejects the configuration, and the proxy then
+  does not use that connection.
 - **`Request` / `Response`**: header, path, query, client IP and body accessors.
 - **`Decision`**: `allow()`, `deny()`, `unauthorized()`, `rate_limited()`,
   `block(status)`, `redirect(url)`, `challenge(..)`, then chain
@@ -140,12 +150,20 @@ Examples are in [`examples/`](examples/).
 ```bash
 mise install                      # Python 3.12 and uv
 python -m pip install -e ".[dev]"
-python -m pytest tests --ignore=tests/integration
+python -m pytest tests
 ruff check src tests
 mypy src
 ```
 
-CI runs the tests on Python 3.10, 3.11 and 3.12.
+`tests/integration` runs the agents in `examples/` against a real proxy
+through the conformance harness, and is skipped unless both `ZENTINEL_BIN` (a
+`zentinel` binary) and `ZENTINEL_CONFORMANCE_HARNESS` (the harness's
+`sdk-conformance/run.py`) are set.
+
+CI runs the tests on Python 3.10, 3.11 and 3.12, and the conformance harness
+against Zentinel built from `main`. The generated gRPC code in
+`src/zentinel_agent_sdk/v2/proto/` is committed; see its `__init__.py` to
+regenerate it.
 
 ## Related
 
