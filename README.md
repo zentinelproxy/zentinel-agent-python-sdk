@@ -31,7 +31,7 @@ install it from GitHub.
 
 > **Status (checked on 2026-10-22): agents built with this SDK work with Zentinel over agent protocol v2, on both the Unix socket and gRPC.**
 > CI runs them behind a real `zentinel` binary through the shared
-> [conformance harness](https://github.com/zentinelproxy/zentinel/tree/sdk/conformance-harness/sdk-conformance):
+> [conformance harness](https://github.com/zentinelproxy/zentinel/tree/main/sdk-conformance):
 > handshake, configuration, request and response header changes, blocking,
 > request-body inspection, and reconnecting after the agent restarts all pass.
 > Delivery of the agent's `config { }` block to `on_configure` needs a Zentinel
